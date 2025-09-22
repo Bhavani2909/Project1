@@ -45,3 +45,16 @@ pipeline {
             steps {
                 script {
                     echo "Deploying to Kubernetes..."
+                    // Example: kubectl apply -f k8s/deployment.yaml
+                    // Add your actual deployment commands here
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            echo "Pipeline finished."
+        }
+    }
+}
