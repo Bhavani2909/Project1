@@ -2,12 +2,13 @@ pipeline {
     agent any
 
     environment {
-        DOCKERHUB_CREDENTIALS = credentials('dockerhub-cred')  // Your DockerHub credentials in Jenkins
-        KUBECONFIG = "/var/jenkins_home/.kube/config"           // Mounted kubeconfig path
+        DOCKERHUB_CREDENTIALS = credentials('dockerhub-cred-id')
+        IMAGE_NAME = "bhavani2909/demo-app"
+        IMAGE_TAG = "1.0"
     }
 
     stages {
-        stage('Checkout Code') {
+        stage('Checkout') {
             steps {
                 git branch: 'main',
                     url: 'https://github.com/Bhavani2909/Project1.git',
@@ -18,7 +19,7 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 script {
-                    sh 'docker build -t bhavani2909/demo-app:1.0 .'
+                    sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} ."
                 }
             }
         }
@@ -33,19 +34,15 @@ pipeline {
 
         stage('Push Docker Image') {
             steps {
-                script {
-                    sh 'docker push bhavani2909/demo-app:1.0'
-                }
+                sh "docker push ${IMAGE_NAME}:${IMAGE_TAG}"
             }
         }
 
         stage('Deploy to Kubernetes') {
             steps {
                 script {
-                    sh '''
-                        kubectl apply -f k8s-deployment.yaml
-                        kubectl apply -f k8s-service.yaml
-                    '''
+                    // Example: Apply Kubernetes manifests
+                    sh "kubectl apply -f k8s/"
                 }
             }
         }
@@ -53,10 +50,10 @@ pipeline {
 
     post {
         success {
-            echo 'Pipeline succeeded!'
+            echo "Pipeline completed successfully!"
         }
         failure {
-            echo 'Pipeline failed! Check logs.'
+            echo "Pipeline failed! Check logs."
         }
     }
 }
