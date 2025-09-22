@@ -2,17 +2,15 @@ pipeline {
     agent any
 
     environment {
-        DOCKERHUB_CREDENTIALS = credentials('dockerhub-cred-id')
+        DOCKERHUB_CREDENTIALS = credentials('dockerhub-cred')  // Your DockerHub credentials ID
         IMAGE_NAME = "bhavani2909/demo-app"
         IMAGE_TAG = "1.0"
     }
 
     stages {
-        stage('Checkout') {
+        stage('Checkout SCM') {
             steps {
-                git branch: 'main',
-                    url: 'https://github.com/Bhavani2909/Project1.git',
-                    credentialsId: 'GitHubPATT'
+                checkout scm
             }
         }
 
@@ -27,34 +25,23 @@ pipeline {
         stage('Login to DockerHub') {
             steps {
                 script {
-                    sh "echo $DOCKERHUB_CREDENTIALS_PSW | docker login -u $DOCKERHUB_CREDENTIALS --password-stdin"
+                    sh """
+                        echo $DOCKERHUB_CREDENTIALS_PSW | \
+                        docker login -u $DOCKERHUB_CREDENTIALS_USR --password-stdin
+                    """
                 }
             }
         }
 
         stage('Push Docker Image') {
             steps {
-                sh "docker push ${IMAGE_NAME}:${IMAGE_TAG}"
+                script {
+                    sh "docker push ${IMAGE_NAME}:${IMAGE_TAG}"
+                }
             }
         }
 
         stage('Deploy to Kubernetes') {
             steps {
                 script {
-                    // Example: Apply Kubernetes manifests
-                    sh "kubectl apply -f k8s/"
-                }
-            }
-        }
-    }
-
-    post {
-        success {
-            echo "Pipeline completed successfully!"
-        }
-        failure {
-            echo "Pipeline failed! Check logs."
-        }
-    }
-}
-
+                    echo "Deploying to Kubernetes..."
