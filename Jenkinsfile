@@ -2,63 +2,55 @@ pipeline {
     agent any
 
     environment {
-        DOCKERHUB_CREDENTIALS = credentials('dockerhub-cred') // Jenkins credentials ID
-        DOCKER_IMAGE = "bhavani2909/demo-app:1.0"
-        GITHUB_REPO = "https://github.com/Bhavani2909/Project1.git"
+        DOCKERHUB_CREDENTIALS = credentials('dockerhub-cred') // Jenkins DockerHub credential ID
+        IMAGE_NAME = 'bhavani2909/demo-app'
+        IMAGE_TAG = '1.0'
+        KUBE_CONFIG = credentials('kubeconfig') // Jenkins secret for kubeconfig if needed
     }
 
     stages {
-
         stage('Checkout Code') {
             steps {
                 git branch: 'main',
-                    url: "${GITHUB_REPO}",
-                    credentialsId: 'GitHubPATT' // your GitHub PAT credential ID
+                    url: 'https://github.com/Bhavani2909/Project1.git',
+                    credentialsId: 'GitHubPATT'
             }
         }
 
         stage('Build Docker Image') {
             steps {
-                script {
-                    sh "docker build -t ${DOCKER_IMAGE} ."
-                }
+                sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} ."
             }
         }
 
         stage('Login to DockerHub') {
             steps {
-                script {
-                    sh "echo ${DOCKERHUB_CREDENTIALS_PSW} | docker login -u ${DOCKERHUB_CREDENTIALS_USR} --password-stdin"
-                }
+                sh "echo ${DOCKERHUB_CREDENTIALS_PSW} | docker login -u ${DOCKERHUB_CREDENTIALS_USR} --password-stdin"
             }
         }
 
         stage('Push Docker Image') {
             steps {
-                script {
-                    sh "docker push ${DOCKER_IMAGE}"
-                }
+                sh "docker push ${IMAGE_NAME}:${IMAGE_TAG}"
             }
         }
 
         stage('Deploy to Kubernetes') {
             steps {
-                script {
-                    sh """
-                        kubectl set image deployment/demo-app demo-app=${DOCKER_IMAGE} --record || \
-                        kubectl create deployment demo-app --image=${DOCKER_IMAGE}
-                    """
-                }
+                sh """
+                    kubectl apply -f k8s-deployment.yaml
+                    kubectl rollout status deployment/demo-app
+                """
             }
         }
     }
 
     post {
         success {
-            echo "Pipeline completed successfully!"
+            echo 'Pipeline completed successfully!'
         }
         failure {
-            echo "Pipeline failed. Check the logs."
+            echo 'Pipeline failed! Check the logs.'
         }
     }
 }
