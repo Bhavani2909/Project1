@@ -2,27 +2,25 @@ pipeline {
     agent any
 
     environment {
-        DOCKERHUB_CREDENTIALS = credentials('dockerhub-cred') // DockerHub credentials in Jenkins
-        IMAGE_NAME = 'bhavani2909/demo-app'                 // DockerHub repo name
-        IMAGE_TAG = '1.0'                                  // Docker image tag
+        DOCKERHUB_CREDENTIALS = credentials('dockerhub-cred') // Jenkins credentials ID
+        DOCKER_IMAGE = "bhavani2909/demo-app:1.0"
+        GITHUB_REPO = "https://github.com/Bhavani2909/Project1.git"
     }
 
     stages {
 
-        stage('Checkout') {
+        stage('Checkout Code') {
             steps {
-                // Clone your GitHub repo
-                git url: 'https://github.com/Bhavani2909/Project1.git',
-                    branch: 'main',
-                    credentialsId: 'GitHubPATT'  // GitHub personal access token stored in Jenkins
+                git branch: 'main',
+                    url: "${GITHUB_REPO}",
+                    credentialsId: 'GitHubPATT' // your GitHub PAT credential ID
             }
         }
 
         stage('Build Docker Image') {
             steps {
                 script {
-                    // Build Docker image from Dockerfile
-                    sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} ."
+                    sh "docker build -t ${DOCKER_IMAGE} ."
                 }
             }
         }
@@ -30,7 +28,6 @@ pipeline {
         stage('Login to DockerHub') {
             steps {
                 script {
-                    // Login using Jenkins credentials
                     sh "echo ${DOCKERHUB_CREDENTIALS_PSW} | docker login -u ${DOCKERHUB_CREDENTIALS_USR} --password-stdin"
                 }
             }
@@ -39,8 +36,7 @@ pipeline {
         stage('Push Docker Image') {
             steps {
                 script {
-                    // Push the image to DockerHub
-                    sh "docker push ${IMAGE_NAME}:${IMAGE_TAG}"
+                    sh "docker push ${DOCKER_IMAGE}"
                 }
             }
         }
@@ -48,21 +44,23 @@ pipeline {
         stage('Deploy to Kubernetes') {
             steps {
                 script {
-                    // Create or update the deployment in Minikube
                     sh """
-                    kubectl apply -f k8s/deployment.yaml
-                    kubectl apply -f k8s/service.yaml
+                        kubectl set image deployment/demo-app demo-app=${DOCKER_IMAGE} --record || \
+                        kubectl create deployment demo-app --image=${DOCKER_IMAGE}
                     """
                 }
             }
         }
-
-    } // stages
+    }
 
     post {
-        always {
-            echo 'Pipeline finished.'
+        success {
+            echo "Pipeline completed successfully!"
+        }
+        failure {
+            echo "Pipeline failed. Check the logs."
         }
     }
 }
+
 
