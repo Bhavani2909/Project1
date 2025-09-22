@@ -2,36 +2,66 @@ pipeline {
     agent any
 
     environment {
-        DOCKERHUB_CREDENTIALS = credentials('dockerhub-cred')
-        IMAGE_NAME = 'bhavani2909/demo-app'
-        IMAGE_TAG = '1.0'
+        DOCKERHUB_CREDENTIALS = credentials('dockerhub-cred') // DockerHub credentials in Jenkins
+        IMAGE_NAME = 'bhavani2909/demo-app'                 // DockerHub repo name
+        IMAGE_TAG = '1.0'                                  // Docker image tag
     }
 
     stages {
+
         stage('Checkout') {
             steps {
-                git 'https://github.com/https://github.com/Bhavani2909/Project1.git
-/devops-demo-app.git'
+                // Clone your GitHub repo
+                git url: 'https://github.com/Bhavani2909/Project1.git',
+                    branch: 'main',
+                    credentialsId: 'GitHubPATT'  // GitHub personal access token stored in Jenkins
             }
         }
 
         stage('Build Docker Image') {
             steps {
-                sh "docker build -t $IMAGE_NAME:$IMAGE_TAG ."
+                script {
+                    // Build Docker image from Dockerfile
+                    sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} ."
+                }
+            }
+        }
+
+        stage('Login to DockerHub') {
+            steps {
+                script {
+                    // Login using Jenkins credentials
+                    sh "echo ${DOCKERHUB_CREDENTIALS_PSW} | docker login -u ${DOCKERHUB_CREDENTIALS_USR} --password-stdin"
+                }
             }
         }
 
         stage('Push Docker Image') {
             steps {
-                sh "echo $DOCKERHUB_CREDENTIALS_PSW | docker login -u $DOCKERHUB_CREDENTIALS_USR --password-stdin"
-                sh "docker push $IMAGE_NAME:$IMAGE_TAG"
+                script {
+                    // Push the image to DockerHub
+                    sh "docker push ${IMAGE_NAME}:${IMAGE_TAG}"
+                }
             }
         }
 
         stage('Deploy to Kubernetes') {
             steps {
-                sh "kubectl set image deployment/demo-app demo-app=$IMAGE_NAME:$IMAGE_TAG"
+                script {
+                    // Create or update the deployment in Minikube
+                    sh """
+                    kubectl apply -f k8s/deployment.yaml
+                    kubectl apply -f k8s/service.yaml
+                    """
+                }
             }
+        }
+
+    } // stages
+
+    post {
+        always {
+            echo 'Pipeline finished.'
         }
     }
 }
